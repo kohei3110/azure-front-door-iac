@@ -31,6 +31,7 @@ logs/
 /dist/
 /build/
 /out/
+.out/
 
 # Coverage
 coverage/
@@ -55,6 +56,15 @@ coverage/
 
 # Azure Developer CLI
 .azure/
+
+# Copilot / agent scratch files (out of scope for IaC)
+.github/agents/
+.github/copilot-instructions.md
+
+# Workflows not related to Front Door WAF CI (kept locally, excluded from PR scope)
+.github/workflows/backend-deploy.yml
+.github/workflows/frontend-deploy.yml
+.github/workflows/infra-deploy.yml
 
 # Terraform (in case added later)
 .terraform/

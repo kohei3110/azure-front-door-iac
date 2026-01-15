@@ -1,0 +1,193 @@
+name: Front Door WAF - PR Check
+
+on:
+  pull_request:
+    paths:
+      - "infra/frontdoor-waf/**"
+      - ".github/workflows/frontdoor-waf-pr.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: frontdoor-waf-pr-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Bicep build/lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Front Door WAF Bicep
+        run: |
+          chmod +x infra/frontdoor-waf/scripts/validate.sh
+          infra/frontdoor-waf/scripts/validate.sh
+
+  what_if:
+    name: What-if (dev)
+    runs-on: ubuntu-latest
+    needs: validate
+
+    # Fork PRs cannot access secrets, so skip. Allow workflow_dispatch for manual runs.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+
+    permissions:
+      contents: read
+      issues: write
+
+    env:
+      TEMPLATE_FILE: infra/frontdoor-waf/main.bicep
+      PARAM_SOURCE_FILE: infra/frontdoor-waf/parameters/dev.bicepparam
+      AZURE_CREDS: ${{ secrets.AZURE_CREDENTIALS || secrets.AZURE_CRED_DEV }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_WAF_RESOURCE_GROUP_DEV || vars.AZURE_RESOURCE_GROUP_WAF_DEV || vars.WAF_RESOURCE_GROUP_DEV }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Preflight (skip when secrets/vars are missing)
+        id: preflight
+        shell: bash
+        run: |
+          run=true
+
+          if [[ -z "${AZURE_CREDS}" ]]; then
+            run=false
+            echo "AZURE credentials secret is missing." >> "$GITHUB_STEP_SUMMARY"
+            echo "- Set secrets.AZURE_CREDENTIALS (preferred) or secrets.AZURE_CRED_DEV" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [[ -z "${AZURE_RESOURCE_GROUP}" ]]; then
+            run=false
+            echo "Azure resource group var is missing." >> "$GITHUB_STEP_SUMMARY"
+            echo "- Set vars.AZURE_WAF_RESOURCE_GROUP_DEV (preferred)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+          if [[ "$run" != "true" ]]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "What-if was skipped to avoid failing PR checks due to missing configuration." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Azure login
+        if: steps.preflight.outputs.run == 'true'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS || secrets.AZURE_CRED_DEV }}
+
+      - name: Install or upgrade Bicep CLI
+        if: steps.preflight.outputs.run == 'true'
+        run: |
+          az bicep upgrade
+          echo "$HOME/.azure/bin" >> "$GITHUB_PATH"
+
+      - name: Compile parameters
+        if: steps.preflight.outputs.run == 'true'
+        run: |
+          mkdir -p infra/frontdoor-waf/.out
+          bicep build-params "$PARAM_SOURCE_FILE" --outfile infra/frontdoor-waf/.out/dev.parameters.json
+
+      - name: What-if (group)
+        if: steps.preflight.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OUT_DIR="infra/frontdoor-waf/.out"
+          WHATIF_JSON="$OUT_DIR/whatif.json"
+          WHATIF_TABLE="$OUT_DIR/whatif.table.txt"
+
+          az deployment group what-if \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "frontdoor-waf-pr-${{ github.run_id }}" \
+            --template-file "$TEMPLATE_FILE" \
+            --parameters @"$OUT_DIR/dev.parameters.json" \
+            --result-format ResourceIdOnly \
+            --exclude-change-types NoChange \
+            --output json > "$WHATIF_JSON"
+
+          az deployment group what-if \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "frontdoor-waf-pr-${{ github.run_id }}" \
+            --template-file "$TEMPLATE_FILE" \
+            --parameters @"$OUT_DIR/dev.parameters.json" \
+            --result-format ResourceIdOnly \
+            --exclude-change-types NoChange \
+            --output table > "$WHATIF_TABLE"
+
+          echo "## Front Door WAF what-if (dev)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Resource Group: \`$AZURE_RESOURCE_GROUP\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Parameters: \`$PARAM_SOURCE_FILE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          head -n 200 "$WHATIF_TABLE" >> "$GITHUB_STEP_SUMMARY" || true
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Full output is uploaded as an artifact (frontdoor-waf-whatif)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload what-if artifact
+        if: steps.preflight.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontdoor-waf-whatif
+          path: infra/frontdoor-waf/.out/
+          if-no-files-found: error
+
+      - name: Prepare PR comment body
+        if: steps.preflight.outputs.run == 'true' && github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OUT_DIR="infra/frontdoor-waf/.out"
+          WHATIF_TABLE="$OUT_DIR/whatif.table.txt"
+          COMMENT_MD="$OUT_DIR/pr-comment.md"
+
+          max=60000
+          truncated=false
+          if [[ $(wc -c < "$WHATIF_TABLE") -gt $max ]]; then
+            truncated=true
+          fi
+
+          {
+            echo "<!-- frontdoor-waf-whatif-dev -->"
+            echo "## Front Door WAF what-if (dev)"
+            echo ""
+            echo "Resource Group: \`$AZURE_RESOURCE_GROUP\`"
+            echo "Parameters: \`$PARAM_SOURCE_FILE\`"
+            echo ""
+            echo "\`\`\`"
+            head -c $max "$WHATIF_TABLE" || true
+            if [[ "$truncated" == "true" ]]; then
+              echo ""
+              echo "... (truncated; see artifact: frontdoor-waf-whatif)"
+            fi
+            echo "\`\`\`"
+          } > "$COMMENT_MD"
+
+      - name: Find existing PR comment
+        if: steps.preflight.outputs.run == 'true' && github.event_name == 'pull_request'
+        uses: peter-evans/find-comment@v3
+        id: find_comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- frontdoor-waf-whatif-dev -->'
+
+      - name: Create or update PR comment
+        if: steps.preflight.outputs.run == 'true' && github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          comment-id: ${{ steps.find_comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: infra/frontdoor-waf/.out/pr-comment.md
+          edit-mode: replace
