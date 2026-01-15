@@ -1,0 +1,527 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.36.1.42791",
+      "templateHash": "9493394786121631081"
+    }
+  },
+  "parameters": {
+    "wafPolicyName": {
+      "type": "string",
+      "metadata": {
+        "description": "WAF policy name to create."
+      }
+    },
+    "wafSkuName": {
+      "type": "string",
+      "defaultValue": "Standard_AzureFrontDoor",
+      "allowedValues": [
+        "Standard_AzureFrontDoor",
+        "Premium_AzureFrontDoor",
+        "Classic_AzureFrontDoor"
+      ],
+      "metadata": {
+        "description": "SKU for the WAF policy. For AFD Standard/Premium, use Standard_AzureFrontDoor or Premium_AzureFrontDoor."
+      }
+    },
+    "wafMode": {
+      "type": "string",
+      "defaultValue": "Prevention",
+      "allowedValues": [
+        "Detection",
+        "Prevention"
+      ],
+      "metadata": {
+        "description": "WAF mode."
+      }
+    },
+    "wafEnabledState": {
+      "type": "string",
+      "defaultValue": "Enabled",
+      "allowedValues": [
+        "Enabled",
+        "Disabled"
+      ],
+      "metadata": {
+        "description": "Enable/disable WAF policy."
+      }
+    },
+    "redirectUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional: redirect URL for Redirect action (empty = omit)."
+      }
+    },
+    "customBlockResponseBodyBase64": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional: custom block response body (base64) (empty = omit)."
+      }
+    },
+    "customBlockResponseStatusCode": {
+      "type": "int",
+      "nullable": true,
+      "metadata": {
+        "description": "Optional: custom block response status code (e.g., 403). Null = omit."
+      }
+    },
+    "requestBodyCheck": {
+      "type": "string",
+      "defaultValue": "Enabled",
+      "allowedValues": [
+        "Enabled",
+        "Disabled"
+      ],
+      "metadata": {
+        "description": "Whether managed rules inspect request body content."
+      }
+    },
+    "captchaExpirationInMinutes": {
+      "type": "int",
+      "nullable": true,
+      "minValue": 5,
+      "maxValue": 1440,
+      "metadata": {
+        "description": "Optional: Captcha cookie lifetime in minutes. Premium_AzureFrontDoor only. Null = omit."
+      }
+    },
+    "javascriptChallengeExpirationInMinutes": {
+      "type": "int",
+      "nullable": true,
+      "minValue": 5,
+      "maxValue": 1440,
+      "metadata": {
+        "description": "Optional: JavaScript challenge cookie lifetime in minutes. Premium_AzureFrontDoor only. Null = omit."
+      }
+    },
+    "logScrubbing": {
+      "type": "object",
+      "nullable": true,
+      "metadata": {
+        "description": "Optional: log scrubbing configuration. Null = omit."
+      }
+    },
+    "managedRuleSets": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Managed rule sets (Afd)."
+      }
+    },
+    "customRules": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Custom rules (Afd)."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags applied to the WAF policy."
+      }
+    },
+    "associateToFrontDoor": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Whether to attach the WAF policy to an existing Front Door profile via a security policy."
+      }
+    },
+    "frontDoorProfileName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Existing Front Door profile name. Required when associateToFrontDoor = true."
+      }
+    },
+    "securityPolicyName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Security policy name (child of the profile). Required when associateToFrontDoor = true."
+      }
+    },
+    "domainResourceIds": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Domain resource IDs to associate (usually Microsoft.Cdn/profiles/customDomains IDs). Required when associateToFrontDoor = true."
+      }
+    },
+    "patternsToMatch": {
+      "type": "array",
+      "defaultValue": [
+        "/*"
+      ],
+      "metadata": {
+        "description": "URL path patterns to match for association."
+      }
+    }
+  },
+  "resources": {
+    "wafPolicy": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "wafPolicy",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "policyName": {
+            "value": "[parameters('wafPolicyName')]"
+          },
+          "skuName": {
+            "value": "[parameters('wafSkuName')]"
+          },
+          "mode": {
+            "value": "[parameters('wafMode')]"
+          },
+          "enabledState": {
+            "value": "[parameters('wafEnabledState')]"
+          },
+          "redirectUrl": {
+            "value": "[parameters('redirectUrl')]"
+          },
+          "customBlockResponseBodyBase64": {
+            "value": "[parameters('customBlockResponseBodyBase64')]"
+          },
+          "customBlockResponseStatusCode": {
+            "value": "[parameters('customBlockResponseStatusCode')]"
+          },
+          "requestBodyCheck": {
+            "value": "[parameters('requestBodyCheck')]"
+          },
+          "captchaExpirationInMinutes": {
+            "value": "[parameters('captchaExpirationInMinutes')]"
+          },
+          "javascriptChallengeExpirationInMinutes": {
+            "value": "[parameters('javascriptChallengeExpirationInMinutes')]"
+          },
+          "logScrubbing": {
+            "value": "[parameters('logScrubbing')]"
+          },
+          "managedRuleSets": {
+            "value": "[parameters('managedRuleSets')]"
+          },
+          "customRules": {
+            "value": "[parameters('customRules')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.36.1.42791",
+              "templateHash": "655299779320166932"
+            }
+          },
+          "parameters": {
+            "policyName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the WAF policy (Microsoft.Network/FrontDoorWebApplicationFirewallPolicies)."
+              }
+            },
+            "skuName": {
+              "type": "string",
+              "defaultValue": "Standard_AzureFrontDoor",
+              "allowedValues": [
+                "Standard_AzureFrontDoor",
+                "Premium_AzureFrontDoor",
+                "Classic_AzureFrontDoor"
+              ],
+              "metadata": {
+                "description": "SKU for the WAF policy. For Azure Front Door Standard/Premium, use Standard_AzureFrontDoor or Premium_AzureFrontDoor."
+              }
+            },
+            "mode": {
+              "type": "string",
+              "defaultValue": "Prevention",
+              "allowedValues": [
+                "Detection",
+                "Prevention"
+              ],
+              "metadata": {
+                "description": "WAF mode. Detection logs only; Prevention blocks."
+              }
+            },
+            "enabledState": {
+              "type": "string",
+              "defaultValue": "Enabled",
+              "allowedValues": [
+                "Enabled",
+                "Disabled"
+              ],
+              "metadata": {
+                "description": "Enable/disable the WAF policy."
+              }
+            },
+            "redirectUrl": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Redirect URL when action is Redirect. Leave empty to omit."
+              }
+            },
+            "customBlockResponseBodyBase64": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Custom block response body (base64). Leave empty to omit."
+              }
+            },
+            "customBlockResponseStatusCode": {
+              "type": "int",
+              "nullable": true,
+              "metadata": {
+                "description": "Custom block response status code (e.g., 403). Leave null to omit."
+              }
+            },
+            "requestBodyCheck": {
+              "type": "string",
+              "defaultValue": "Enabled",
+              "allowedValues": [
+                "Enabled",
+                "Disabled"
+              ],
+              "metadata": {
+                "description": "Whether managed rules inspect request body content."
+              }
+            },
+            "captchaExpirationInMinutes": {
+              "type": "int",
+              "nullable": true,
+              "minValue": 5,
+              "maxValue": 1440,
+              "metadata": {
+                "description": "Captcha cookie lifetime in minutes. Premium_AzureFrontDoor only. Leave null to omit."
+              }
+            },
+            "javascriptChallengeExpirationInMinutes": {
+              "type": "int",
+              "nullable": true,
+              "minValue": 5,
+              "maxValue": 1440,
+              "metadata": {
+                "description": "JavaScript challenge cookie lifetime in minutes. Premium_AzureFrontDoor only. Leave null to omit."
+              }
+            },
+            "logScrubbing": {
+              "type": "object",
+              "nullable": true,
+              "metadata": {
+                "description": "Optional log scrubbing configuration. Provide null to omit."
+              }
+            },
+            "managedRuleSets": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Managed rule sets (Afd). Example element: { ruleSetType: \"Microsoft_DefaultRuleSet\", ruleSetVersion: \"2.1\" }."
+              }
+            },
+            "customRules": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Custom rules (Afd). Example element: { name: \"BlockBadBots\", priority: 10, enabledState: \"Enabled\", action: \"Block\", matchConditions: [...] }."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Resource tags."
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "Global",
+              "metadata": {
+                "description": "Location for the resource. Front Door WAF policies are typically deployed to Global."
+              }
+            }
+          },
+          "resources": {
+            "waf": {
+              "type": "Microsoft.Network/FrontDoorWebApplicationFirewallPolicies",
+              "apiVersion": "2025-03-01",
+              "name": "[parameters('policyName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[parameters('skuName')]"
+              },
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "policySettings": "[union(createObject('enabledState', parameters('enabledState'), 'mode', parameters('mode'), 'requestBodyCheck', parameters('requestBodyCheck')), if(not(empty(parameters('redirectUrl'))), createObject('redirectUrl', parameters('redirectUrl')), createObject()), if(not(empty(parameters('customBlockResponseBodyBase64'))), createObject('customBlockResponseBody', parameters('customBlockResponseBodyBase64')), createObject()), if(not(equals(parameters('customBlockResponseStatusCode'), null())), createObject('customBlockResponseStatusCode', parameters('customBlockResponseStatusCode')), createObject()), if(not(equals(parameters('captchaExpirationInMinutes'), null())), createObject('captchaExpirationInMinutes', parameters('captchaExpirationInMinutes')), createObject()), if(not(equals(parameters('javascriptChallengeExpirationInMinutes'), null())), createObject('javascriptChallengeExpirationInMinutes', parameters('javascriptChallengeExpirationInMinutes')), createObject()), if(not(equals(parameters('logScrubbing'), null())), createObject('logScrubbing', parameters('logScrubbing')), createObject()))]",
+                "managedRules": {
+                  "managedRuleSets": "[parameters('managedRuleSets')]"
+                },
+                "customRules": {
+                  "rules": "[parameters('customRules')]"
+                }
+              }
+            }
+          },
+          "outputs": {
+            "wafPolicyId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/FrontDoorWebApplicationFirewallPolicies', parameters('policyName'))]"
+            },
+            "wafPolicyName": {
+              "type": "string",
+              "value": "[parameters('policyName')]"
+            }
+          }
+        }
+      }
+    },
+    "securityPolicy": {
+      "condition": "[parameters('associateToFrontDoor')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "securityPolicy",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "profileName": {
+            "value": "[parameters('frontDoorProfileName')]"
+          },
+          "securityPolicyName": {
+            "value": "[parameters('securityPolicyName')]"
+          },
+          "wafPolicyId": {
+            "value": "[reference('wafPolicy').outputs.wafPolicyId.value]"
+          },
+          "domainResourceIds": {
+            "value": "[parameters('domainResourceIds')]"
+          },
+          "patternsToMatch": {
+            "value": "[parameters('patternsToMatch')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.36.1.42791",
+              "templateHash": "13506848935777191953"
+            }
+          },
+          "parameters": {
+            "profileName": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing Azure Front Door (Standard/Premium) profile name (Microsoft.Cdn/profiles)."
+              }
+            },
+            "securityPolicyName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the security policy under the profile (Microsoft.Cdn/profiles/securityPolicies)."
+              }
+            },
+            "wafPolicyId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the WAF policy (Microsoft.Cdn/cdnWebApplicationFirewallPolicies)."
+              }
+            },
+            "domainResourceIds": {
+              "type": "array",
+              "metadata": {
+                "description": "Resource IDs of domains to associate with the WAF (typically Microsoft.Cdn/profiles/customDomains resource IDs)."
+              }
+            },
+            "patternsToMatch": {
+              "type": "array",
+              "defaultValue": [
+                "/*"
+              ],
+              "metadata": {
+                "description": "List of URL path patterns to match, e.g. [\"/*\"]."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Cdn/profiles/securityPolicies",
+              "apiVersion": "2024-09-01",
+              "name": "[format('{0}/{1}', parameters('profileName'), parameters('securityPolicyName'))]",
+              "properties": {
+                "parameters": {
+                  "type": "WebApplicationFirewall",
+                  "wafPolicy": {
+                    "id": "[parameters('wafPolicyId')]"
+                  },
+                  "associations": [
+                    {
+                      "copy": [
+                        {
+                          "name": "domains",
+                          "count": "[length(parameters('domainResourceIds'))]",
+                          "input": {
+                            "id": "[parameters('domainResourceIds')[copyIndex('domains')]]"
+                          }
+                        }
+                      ],
+                      "patternsToMatch": "[parameters('patternsToMatch')]"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "securityPolicyId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Cdn/profiles/securityPolicies', parameters('profileName'), parameters('securityPolicyName'))]"
+            },
+            "securityPolicyName": {
+              "type": "string",
+              "value": "[parameters('securityPolicyName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "wafPolicy"
+      ]
+    }
+  },
+  "outputs": {
+    "wafPolicyId": {
+      "type": "string",
+      "value": "[reference('wafPolicy').outputs.wafPolicyId.value]"
+    },
+    "wafPolicyName": {
+      "type": "string",
+      "value": "[reference('wafPolicy').outputs.wafPolicyName.value]"
+    },
+    "securityPolicyId": {
+      "type": "string",
+      "value": "[if(parameters('associateToFrontDoor'), resourceId('Microsoft.Cdn/profiles/securityPolicies', parameters('frontDoorProfileName'), parameters('securityPolicyName')), '')]"
+    }
+  }
+}

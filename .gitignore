@@ -1,0 +1,67 @@
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# dotenv (secrets)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Build / dist output
+/dist/
+/build/
+/out/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Runtime
+*.pid
+*.seed
+*.pid.lock
+
+# Cache
+.cache/
+.eslintcache
+
+# TypeScript (if used)
+*.tsbuildinfo
+
+# Azure / Bicep / ARM
+# Keep source .bicep/.json; ignore local parameter overrides and tooling state
+*.bicep.local
+*.parameters.local.json
+
+# Azure Developer CLI
+.azure/
+
+# Terraform (in case added later)
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Misc
+*.swp
+*.swo
