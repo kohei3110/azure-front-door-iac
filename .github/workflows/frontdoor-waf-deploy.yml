@@ -1,0 +1,146 @@
+name: Front Door WAF - Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+
+permissions: {}
+
+concurrency:
+  group: frontdoor-waf-deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+
+    # Environment gate (configure required reviewers in GitHub settings)
+    environment: ${{ inputs.environment == 'prod' && 'waf-prod' || inputs.environment == 'staging' && 'waf-staging' || 'waf-dev' }}
+
+    permissions:
+      contents: read
+
+    env:
+      TEMPLATE_FILE: infra/frontdoor-waf/main.bicep
+      OUT_DIR: infra/frontdoor-waf/.out
+
+      # Optional global creds fallback (preferred)
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Env-specific creds fallbacks
+      AZURE_CRED_DEV: ${{ secrets.AZURE_CRED_DEV }}
+      AZURE_CRED_STAGING: ${{ secrets.AZURE_CRED_STAGING }}
+      AZURE_CRED_PROD: ${{ secrets.AZURE_CRED_PROD }}
+
+      # Resource groups (configure as repository variables)
+      AZURE_WAF_RESOURCE_GROUP_DEV: ${{ vars.AZURE_WAF_RESOURCE_GROUP_DEV || vars.AZURE_RESOURCE_GROUP_WAF_DEV || vars.WAF_RESOURCE_GROUP_DEV }}
+      AZURE_WAF_RESOURCE_GROUP_STAGING: ${{ vars.AZURE_WAF_RESOURCE_GROUP_STAGING || vars.AZURE_RESOURCE_GROUP_WAF_STAGING || vars.WAF_RESOURCE_GROUP_STAGING }}
+      AZURE_WAF_RESOURCE_GROUP_PROD: ${{ vars.AZURE_WAF_RESOURCE_GROUP_PROD || vars.AZURE_RESOURCE_GROUP_WAF_PROD || vars.WAF_RESOURCE_GROUP_PROD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve target settings
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$OUT_DIR"
+
+          case "${{ inputs.environment }}" in
+            dev)
+              echo "PARAM_SOURCE_FILE=infra/frontdoor-waf/parameters/dev.bicepparam" >> "$GITHUB_ENV"
+              echo "AZURE_RESOURCE_GROUP=$AZURE_WAF_RESOURCE_GROUP_DEV" >> "$GITHUB_ENV"
+              ;;
+            staging)
+              echo "PARAM_SOURCE_FILE=infra/frontdoor-waf/parameters/staging.bicepparam" >> "$GITHUB_ENV"
+              echo "AZURE_RESOURCE_GROUP=$AZURE_WAF_RESOURCE_GROUP_STAGING" >> "$GITHUB_ENV"
+              ;;
+            prod)
+              echo "PARAM_SOURCE_FILE=infra/frontdoor-waf/parameters/prod.bicepparam" >> "$GITHUB_ENV"
+              echo "AZURE_RESOURCE_GROUP=$AZURE_WAF_RESOURCE_GROUP_PROD" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "Unknown environment: ${{ inputs.environment }}" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "DEPLOYMENT_NAME=frontdoor-waf-${{ inputs.environment }}-${{ github.run_number }}" >> "$GITHUB_ENV"
+
+      - name: Preflight (fail-fast when required config is missing)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${AZURE_RESOURCE_GROUP:-}" ]]; then
+            echo "AZURE_RESOURCE_GROUP is empty. Configure repository variables for the target environment." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          if [[ ! -f "${PARAM_SOURCE_FILE}" ]]; then
+            echo "Parameter file not found: ${PARAM_SOURCE_FILE}" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "## Front Door WAF deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Environment: \`${{ inputs.environment }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "GitHub Environment gate: \`${{ inputs.environment == 'prod' && 'waf-prod' || inputs.environment == 'staging' && 'waf-staging' || 'waf-dev' }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Resource Group: \`${AZURE_RESOURCE_GROUP}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Parameters: \`${PARAM_SOURCE_FILE}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Azure login (dev)
+        if: inputs.environment == 'dev'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS || secrets.AZURE_CRED_DEV }}
+
+      - name: Azure login (staging)
+        if: inputs.environment == 'staging'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS || secrets.AZURE_CRED_STAGING }}
+
+      - name: Azure login (prod)
+        if: inputs.environment == 'prod'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS || secrets.AZURE_CRED_PROD }}
+
+      - name: Install or upgrade Bicep CLI
+        run: |
+          az bicep upgrade
+          echo "$HOME/.azure/bin" >> "$GITHUB_PATH"
+
+      - name: Compile parameters
+        run: |
+          bicep build-params "$PARAM_SOURCE_FILE" --outfile "$OUT_DIR/parameters.json"
+
+      - name: Deploy Bicep template
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          az deployment group create \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$DEPLOYMENT_NAME" \
+            --template-file "$TEMPLATE_FILE" \
+            --parameters @"$OUT_DIR/parameters.json"
+
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontdoor-waf-deploy-${{ inputs.environment }}-${{ github.run_number }}
+          path: infra/frontdoor-waf/.out/
+          if-no-files-found: error
