@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "wafPolicyName": {
+      "value": "policy001"
+    },
+    "wafSkuName": {
+      "value": "Premium_AzureFrontDoor"
+    },
+    "wafMode": {
+      "value": "Detection"
+    },
+    "wafEnabledState": {
+      "value": "Enabled"
+    },
+    "requestBodyCheck": {
+      "value": "Enabled"
+    },
+    "captchaExpirationInMinutes": {
+      "value": 30
+    },
+    "javascriptChallengeExpirationInMinutes": {
+      "value": 30
+    },
+    "managedRuleSets": {
+      "value": [
+        {
+          "exclusions": [],
+          "ruleGroupOverrides": [],
+          "ruleSetAction": "Block",
+          "ruleSetType": "Microsoft_DefaultRuleSet",
+          "ruleSetVersion": "2.1"
+        },
+        {
+          "exclusions": [],
+          "ruleGroupOverrides": [],
+          "ruleSetType": "Microsoft_BotManagerRuleSet",
+          "ruleSetVersion": "1.0"
+        }
+      ]
+    },
+    "customRules": {
+      "value": []
+    },
+    "associateToFrontDoor": {
+      "value": false
+    },
+    "frontDoorProfileName": {
+      "value": ""
+    },
+    "securityPolicyName": {
+      "value": ""
+    },
+    "domainResourceIds": {
+      "value": []
+    },
+    "patternsToMatch": {
+      "value": [
+        "/*"
+      ]
+    },
+    "tags": {
+      "value": {}
+    }
+  }
+}

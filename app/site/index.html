@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Static Origin Site</title>
+    <meta name="description" content="Azure Front Door のオリジンとして配置できるシンプルな静的サイトのサンプルです。" />
+
+    <meta name="theme-color" content="#0b1220" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Static Origin Site" />
+    <meta property="og:description" content="Front Door のオリジン向けに最小構成で作った静的サイト" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ja_JP" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=20260115" />
+
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+
+    <!-- Preconnect hints (optional): set to your analytics/CDN if any -->
+    <!-- <link rel="preconnect" href="https://example.com" /> -->
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Static Origin Site",
+        "url": "/"
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">本文へスキップ</a>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">▦</span>
+          <span class="brand-name">Static Origin Site</span>
+        </div>
+
+        <nav class="nav" aria-label="サイト内">
+          <a href="#features">特徴</a>
+          <a href="#health">ヘルス</a>
+          <a href="#about">説明</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="container">
+      <section class="hero">
+        <h1>Front Door のオリジン用 静的サイト</h1>
+        <p class="lead">
+          これは <strong>そのままオリジンに置ける</strong>、最小構成の静的サイトです。
+          404 ページや robots.txt / sitemap.xml など、運用で地味に効くものも入れています。
+        </p>
+
+        <div class="hero-actions">
+          <a class="button primary" href="#features">中身を見る</a>
+          <a class="button" href="/README.md" target="_blank" rel="noreferrer">README</a>
+        </div>
+
+        <div class="callout">
+          <p>
+            <strong>確認用:</strong> このページはクライアントサイドで軽い表示だけ行い、サーバー処理は一切ありません。
+          </p>
+          <p class="muted">
+            もし Front Door 側でキャッシュや圧縮・WAF を有効にする場合は、
+            <span class="mono">README.md</span> の「Front Door 設定の目安」を参照してください。
+          </p>
+        </div>
+      </section>
+
+      <section id="features" class="section">
+        <h2>特徴</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>静的ファイルのみ</h3>
+            <p>HTML/CSS/JS（素の JS）で完結。ビルド不要です。</p>
+          </article>
+          <article class="card">
+            <h3>Front Door 前提</h3>
+            <p>パスはルート基準（<span class="mono">/assets/…</span>）で記述しています。</p>
+          </article>
+          <article class="card">
+            <h3>運用向けの同梱物</h3>
+            <p>404 / robots / sitemap / security.txt などを同梱。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="health" class="section">
+        <h2>ヘルス（静的）</h2>
+        <p>
+          オリジンのヘルスプローブ（Front Door の Origin health probe）は、
+          たとえば <span class="mono">/health.html</span> のような <em>必ず 200 を返す静的ファイル</em> を向けるのが手堅いです。
+        </p>
+        <p>
+          このサイトには <a href="/health.html">/health.html</a> を用意しています。
+        </p>
+      </section>
+
+      <section id="about" class="section">
+        <h2>説明</h2>
+        <details class="details" open>
+          <summary>このサイトが想定する構成</summary>
+          <ul>
+            <li>Front Door（カスタムドメイン/HTTPS/WAF は任意）</li>
+            <li>オリジン: 静的ホスティング（Storage static website / App Service / Nginx など）</li>
+          </ul>
+        </details>
+
+        <details class="details">
+          <summary>ローカルでの確認</summary>
+          <p>
+            macOS なら Finder で開いても良いですが、
+            相対/絶対パスの挙動確認のためにローカルサーバーでの表示がおすすめです。
+          </p>
+          <p class="muted">（README に手順を記載しています）</p>
+        </details>
+      </section>
+
+      <footer class="site-footer">
+        <div class="footer-inner">
+          <p>
+            <span class="muted">Generated:</span>
+            <time datetime="2026-01-15">2026-01-15</time>
+          </p>
+          <p class="muted">© Your Team</p>
+        </div>
+      </footer>
+    </main>
+
+    <script src="/assets/js/main.js?v=20260115" defer></script>
+  </body>
+</html>
